@@ -1,29 +1,98 @@
+import { useState, useEffect, useMemo } from "react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Area, AreaChart } from "recharts";
-import { TrendingUp, Banknote, Car, Activity } from "lucide-react";
+import { TrendingUp, Banknote, Car, Activity, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/services/supabase";
 
-// Mock Data
-const revenueData = [
-  { name: "Seg", total: 450 },
-  { name: "Ter", total: 320 },
-  { name: "Qua", total: 580 },
-  { name: "Qui", total: 410 },
-  { name: "Sex", total: 850 },
-  { name: "Sáb", total: 1100 },
-  { name: "Dom", total: 950 },
-];
-
-const washesData = [
-  { name: "Seg", count: 10 },
-  { name: "Ter", count: 7 },
-  { name: "Qua", count: 13 },
-  { name: "Qui", count: 9 },
-  { name: "Sex", count: 20 },
-  { name: "Sáb", count: 35 },
-  { name: "Dom", count: 28 },
-];
+interface OSData {
+  id: string;
+  created_at: string;
+  status: string;
+  services: { price: number };
+}
 
 export default function Dashboard() {
+  const [data, setData] = useState<OSData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('os')
+        .select(`id, created_at, status, services(price)`);
+      if (error) throw error;
+      if (data) setData(data as unknown as OSData[]);
+    } catch (err) {
+      console.error("Erro ao buscar dados do dashboard:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const metrics = useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    
+    // Configura os últimos 7 dias
+    const last7Days: any[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      last7Days.push({
+        dateStr: d.toISOString().split("T")[0],
+        name: d.toLocaleDateString("pt-BR", { weekday: "short" }),
+        total: 0,
+        count: 0
+      });
+    }
+
+    let revenueToday = 0;
+    let washesToday = 0;
+    let inQueue = 0;
+    
+    data.forEach(os => {
+      const osDate = new Date(os.created_at).toISOString().split("T")[0];
+      const isToday = osDate === todayStr;
+      
+      if (os.status !== "lavado") {
+        inQueue++;
+      } else {
+        const price = Number(os.services?.price || 0);
+        
+        // Hoje
+        if (isToday) {
+          revenueToday += price;
+          washesToday++;
+        }
+        
+        // Últimos 7 dias
+        const dayObj = last7Days.find(d => d.dateStr === osDate);
+        if (dayObj) {
+          dayObj.total += price;
+          dayObj.count++;
+        }
+      }
+    });
+
+    const averageTicket = washesToday > 0 ? (revenueToday / washesToday) : 0;
+
+    return {
+      revenueToday,
+      washesToday,
+      averageTicket,
+      inQueue,
+      charts: last7Days
+    };
+  }, [data]);
+
+  if (loading) {
+    return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-slate-400" size={32} /></div>;
+  }
+
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 p-4 md:p-0">
       {/* Header */}
@@ -36,29 +105,29 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <MetricCard
           title="Faturamento (Hoje)"
-          value="R$ 1.100"
-          trend="+12% em relação a ontem"
+          value={`R$ ${metrics.revenueToday.toFixed(2).replace(".", ",")}`}
+          trend="Total concluído hoje"
           icon={<Banknote size={20} className="text-emerald-600" />}
           bgColor="bg-emerald-50"
         />
         <MetricCard
           title="Ticket Médio"
-          value="R$ 72,50"
-          trend="+5% nesta semana"
+          value={`R$ ${metrics.averageTicket.toFixed(2).replace(".", ",")}`}
+          trend="Média de hoje"
           icon={<TrendingUp size={20} className="text-blue-600" />}
           bgColor="bg-blue-50"
         />
         <MetricCard
           title="Lavagens (Hoje)"
-          value="35"
-          trend="8 na fila agora"
+          value={metrics.washesToday}
+          trend={`${metrics.inQueue} na fila agora`}
           icon={<Car size={20} className="text-indigo-600" />}
           bgColor="bg-indigo-50"
         />
         <MetricCard
           title="Produtividade"
-          value="95%"
-          trend="Equipe em alta"
+          value={metrics.inQueue > 0 ? "Alta" : "Livre"}
+          trend="Demanda atual"
           icon={<Activity size={20} className="text-violet-600" />}
           bgColor="bg-violet-50"
         />
@@ -74,39 +143,17 @@ export default function Dashboard() {
           </div>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+              <AreaChart data={metrics.charts} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis 
-                  dataKey="name" 
-                  stroke="#94a3b8" 
-                  fontSize={12} 
-                  tickLine={false} 
-                  axisLine={false} 
-                />
-                <YAxis 
-                  stroke="#94a3b8" 
-                  fontSize={12} 
-                  tickLine={false} 
-                  axisLine={false} 
-                  tickFormatter={(value) => `R$${value}`} 
-                />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} 
-                  itemStyle={{ color: '#0f172a', fontWeight: 'bold' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="total" 
-                  stroke="#10b981" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorRevenue)" 
-                />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `R$${value}`} />
+                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} itemStyle={{ color: '#0f172a', fontWeight: 'bold' }} />
+                <Area type="monotone" dataKey="total" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -120,29 +167,11 @@ export default function Dashboard() {
           </div>
           <div className="h-[250px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={washesData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                <XAxis 
-                  dataKey="name" 
-                  stroke="#94a3b8" 
-                  fontSize={12} 
-                  tickLine={false} 
-                  axisLine={false} 
-                />
-                <YAxis 
-                  stroke="#94a3b8" 
-                  fontSize={12} 
-                  tickLine={false} 
-                  axisLine={false} 
-                />
-                <Tooltip 
-                  cursor={{ fill: '#f1f5f9' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} 
-                />
-                <Bar 
-                  dataKey="count" 
-                  fill="#3b82f6" 
-                  radius={[6, 6, 0, 0]} 
-                />
+              <BarChart data={metrics.charts} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
+                <Bar dataKey="count" fill="#3b82f6" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
