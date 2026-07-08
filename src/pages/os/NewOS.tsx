@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/services/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 const newOsSchema = z.object({
   plate: z.string().min(7, "Placa inválida").max(8),
@@ -17,15 +19,27 @@ const newOsSchema = z.object({
 
 type NewOsForm = z.infer<typeof newOsSchema>;
 
-const MOCK_SERVICES = [
-  { id: "s1", name: "Ducha Simples", price: 40, time: "30 min" },
-  { id: "s2", name: "Lavagem Completa", price: 80, time: "1 hr" },
-  { id: "s3", name: "Lavagem Premium", price: 150, time: "2 hrs" },
-];
+interface ServiceData {
+  id: string;
+  name: string;
+  price: number;
+  time: string;
+}
 
 export default function NewOS() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [services, setServices] = useState<ServiceData[]>([]);
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    const { data } = await supabase.from('services').select('*').order('price', { ascending: true });
+    if (data) setServices(data);
+  };
 
   const {
     register,
@@ -41,27 +55,36 @@ export default function NewOS() {
 
   const onSubmit = async (data: NewOsForm) => {
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    console.log("Nova OS criada:", data);
-    setIsLoading(false);
-    navigate("/app/os");
+    try {
+      const { error } = await supabase.from('os').insert({
+        plate: data.plate,
+        model: data.model,
+        service_id: data.serviceId,
+        status: 'esperando',
+        user_id: user?.id
+      });
+      
+      if (error) throw error;
+      navigate("/app/os");
+    } catch (err) {
+      console.error("Erro ao criar OS:", err);
+      alert("Ocorreu um erro ao criar a Ordem de Serviço.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Formatação de Placa simples (uppercase e hífen)
   const handlePlateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    if (val.length > 3 && isNaN(Number(val[3]))) {
-      // Mercosul format or old format handling could go here. Keeping it simple.
-    }
     if (val.length > 3) val = val.slice(0, 3) + "-" + val.slice(3, 7);
     setValue("plate", val, { shouldValidate: true });
   };
 
   return (
     <div className="flex flex-col h-full animate-in slide-in-from-right-4 duration-300 pb-24 md:pb-8">
-      {/* Header */}
       <div className="flex items-center gap-4 mb-6 sticky top-0 bg-slate-50/80 backdrop-blur-md z-10 py-4 -mx-4 px-4 md:mx-0 md:px-0">
         <button 
+          type="button"
           onClick={() => navigate(-1)}
           className="w-10 h-10 rounded-full bg-white flex items-center justify-center border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors"
         >
@@ -74,7 +97,6 @@ export default function NewOS() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-2xl">
-        {/* Seção Veículo */}
         <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
           <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-50">
             <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
@@ -115,7 +137,6 @@ export default function NewOS() {
           </div>
         </section>
 
-        {/* Seção Serviço */}
         <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
           <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-50">
             <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
@@ -125,7 +146,9 @@ export default function NewOS() {
           </div>
 
           <div className="space-y-3">
-            {MOCK_SERVICES.map((service) => (
+            {services.length === 0 ? (
+              <div className="flex justify-center py-4"><Loader2 className="animate-spin text-slate-400" size={24} /></div>
+            ) : services.map((service) => (
               <label
                 key={service.id}
                 className={cn(
@@ -148,9 +171,8 @@ export default function NewOS() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-slate-900">R$ {service.price.toFixed(2).replace(".", ",")}</p>
+                  <p className="font-bold text-slate-900">R$ {Number(service.price).toFixed(2).replace(".", ",")}</p>
                 </div>
-                {/* Input radio oculto gerido pelo React Hook Form */}
                 <input
                   type="radio"
                   value={service.id}
@@ -163,7 +185,6 @@ export default function NewOS() {
           </div>
         </section>
 
-        {/* Botão Fixo (Floating Action) apenas no mobile, ou estático no final */}
         <div className="fixed bottom-[80px] md:bottom-8 left-4 right-4 md:static md:w-full z-20">
           <Button
             type="submit"

@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { Home, ListTodo, PlusCircle, Car, Users, Settings, LogOut, LayoutDashboard, DollarSign, Wrench } from "lucide-react";
+import { ListTodo, PlusCircle, Car, Users, Settings, LogOut, LayoutDashboard, DollarSign, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [

@@ -1,55 +1,73 @@
-import { useState } from "react";
-import { Clock, Play, CheckCircle2, Car, Banknote } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Clock, Play, CheckCircle2, Car, Banknote, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/services/supabase";
 
 type OSStatus = "esperando" | "lavando" | "lavado";
 
-interface MockOS {
+interface Service {
+  name: string;
+  price: number;
+}
+
+interface OSData {
   id: string;
   plate: string;
   model: string;
-  serviceName: string;
-  price: number;
   status: OSStatus;
-  createdAt: string;
+  created_at: string;
+  services: Service;
 }
-
-const MOCK_DATA: MockOS[] = [
-  {
-    id: "os-001",
-    plate: "ABC-1234",
-    model: "Honda Civic",
-    serviceName: "Lavagem Completa",
-    price: 80,
-    status: "esperando",
-    createdAt: "10:30",
-  },
-  {
-    id: "os-002",
-    plate: "XYZ-9876",
-    model: "Toyota Corolla",
-    serviceName: "Ducha Simples",
-    price: 40,
-    status: "lavando",
-    createdAt: "10:15",
-  },
-  {
-    id: "os-003",
-    plate: "DEF-5678",
-    model: "Jeep Compass",
-    serviceName: "Lavagem Premium",
-    price: 120,
-    status: "lavado",
-    createdAt: "09:45",
-  },
-];
 
 export default function OSList() {
   const [activeTab, setActiveTab] = useState<OSStatus | "todas">("todas");
+  const [osList, setOsList] = useState<OSData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredOS = MOCK_DATA.filter((os) =>
+  useEffect(() => {
+    fetchOS();
+  }, []);
+
+  const fetchOS = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('os')
+        .select(`
+          id,
+          plate,
+          model,
+          status,
+          created_at,
+          services (name, price)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) setOsList(data as unknown as OSData[]);
+    } catch (err) {
+      console.error("Erro ao buscar OS:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateStatus = async (id: string, newStatus: OSStatus) => {
+    try {
+      const { error } = await supabase
+        .from('os')
+        .update({ status: newStatus })
+        .eq('id', id);
+      
+      if (error) throw error;
+      fetchOS();
+    } catch (err) {
+      console.error("Erro ao atualizar:", err);
+    }
+  };
+
+  const filteredOS = osList.filter((os) =>
     activeTab === "todas" ? true : os.status === activeTab
   );
 
@@ -76,14 +94,16 @@ export default function OSList() {
 
       {/* Lista de Cards */}
       <div className="flex flex-col gap-4 pb-4">
-        {filteredOS.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-12"><Loader2 className="animate-spin text-slate-400" size={32} /></div>
+        ) : filteredOS.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-400">
             <Car size={48} className="mb-4 opacity-20" />
             <p className="font-medium">Nenhum veículo nesta lista.</p>
           </div>
         ) : (
           filteredOS.map((os) => (
-            <OSCard key={os.id} os={os} />
+            <OSCard key={os.id} os={os} onUpdateStatus={updateStatus} />
           ))
         )}
       </div>
@@ -91,13 +111,14 @@ export default function OSList() {
   );
 }
 
-function OSCard({ os }: { os: MockOS }) {
+function OSCard({ os, onUpdateStatus }: { os: OSData; onUpdateStatus: (id: string, s: OSStatus) => void }) {
   const statusConfig = {
     esperando: {
       color: "bg-amber-100 text-amber-700 border-amber-200",
       icon: <Clock size={14} className="mr-1" />,
       label: "Aguardando",
       actionText: "Iniciar",
+      nextStatus: "lavando" as OSStatus,
       actionIcon: <Play size={16} className="mr-2" />,
       actionColor: "bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/20",
     },
@@ -106,6 +127,7 @@ function OSCard({ os }: { os: MockOS }) {
       icon: <Clock size={14} className="mr-1 animate-pulse" />,
       label: "Lavando",
       actionText: "Finalizar",
+      nextStatus: "lavado" as OSStatus,
       actionIcon: <CheckCircle2 size={16} className="mr-2" />,
       actionColor: "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20",
     },
@@ -114,16 +136,19 @@ function OSCard({ os }: { os: MockOS }) {
       icon: <CheckCircle2 size={14} className="mr-1" />,
       label: "Pronto",
       actionText: "Cobrar",
+      nextStatus: "lavado" as OSStatus, // Placeholder para tela de cobrança futura
       actionIcon: <Banknote size={16} className="mr-2" />,
       actionColor: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20",
     },
   };
 
-  const config = statusConfig[os.status];
+  const config = statusConfig[os.status] || statusConfig.esperando;
+  
+  // Format time
+  const time = new Date(os.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 transition-all hover:shadow-md flex flex-col gap-4">
-      {/* Topo do Card: Placa e Status */}
       <div className="flex justify-between items-start">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -132,7 +157,7 @@ function OSCard({ os }: { os: MockOS }) {
             </h3>
             <span className="text-sm font-medium text-slate-400">• {os.model}</span>
           </div>
-          <p className="text-sm font-medium text-slate-600">{os.serviceName}</p>
+          <p className="text-sm font-medium text-slate-600">{os.services?.name}</p>
         </div>
         
         <div className="flex flex-col items-end gap-2">
@@ -141,24 +166,26 @@ function OSCard({ os }: { os: MockOS }) {
             {config.label}
           </Badge>
           <span className="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
-            Chegada {os.createdAt}
+            Chegada {time}
           </span>
         </div>
       </div>
 
-      {/* Separador */}
       <div className="h-px w-full bg-slate-50" />
 
-      {/* Base do Card: Valor e Ação */}
       <div className="flex justify-between items-center">
         <div>
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Total</p>
           <p className="text-lg font-bold text-slate-900">
-            R$ {os.price.toFixed(2).replace(".", ",")}
+            R$ {Number(os.services?.price || 0).toFixed(2).replace(".", ",")}
           </p>
         </div>
 
         <button
+          onClick={() => {
+            if (os.status !== 'lavado') onUpdateStatus(os.id, config.nextStatus);
+            else alert("Ação de cobrança em desenvolvimento");
+          }}
           className={cn(
             "flex items-center justify-center h-11 px-5 rounded-xl font-semibold text-sm transition-all shadow-sm active:scale-95",
             config.actionColor
