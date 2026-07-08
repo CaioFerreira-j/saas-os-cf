@@ -1,19 +1,24 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { ListTodo, PlusCircle, Car, Users, Settings, LogOut, LayoutDashboard, DollarSign, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 const NAV_ITEMS = [
-  { name: "Fila", path: "/app/os", icon: ListTodo, mobile: true },
-  { name: "Nova OS", path: "/app/os/new", icon: PlusCircle, mobile: true },
-  { name: "Dashboard", path: "/app/dashboard", icon: LayoutDashboard, mobile: false },
-  { name: "Veículos", path: "/app/vehicles", icon: Car, mobile: true },
-  { name: "Clientes", path: "/app/customers", icon: Users, mobile: false },
-  { name: "Serviços", path: "/app/services", icon: Wrench, mobile: false },
-  { name: "Financeiro", path: "/app/finance", icon: DollarSign, mobile: false },
+  { name: "Fila", path: "/app/os", icon: ListTodo, mobile: true, roles: ["admin", "funcionario"] },
+  { name: "Nova OS", path: "/app/os/new", icon: PlusCircle, mobile: true, roles: ["admin", "funcionario"] },
+  { name: "Dashboard", path: "/app/dashboard", icon: LayoutDashboard, mobile: false, roles: ["admin"] },
+  { name: "Veículos", path: "/app/vehicles", icon: Car, mobile: true, roles: ["admin", "funcionario"] },
+  { name: "Clientes", path: "/app/customers", icon: Users, mobile: false, roles: ["admin"] },
+  { name: "Serviços", path: "/app/services", icon: Wrench, mobile: false, roles: ["admin"] },
+  { name: "Financeiro", path: "/app/finance", icon: DollarSign, mobile: false, roles: ["admin"] },
 ];
 
 export default function AppLayout() {
   const location = useLocation();
+  const { profile, signOut } = useAuth();
+  
+  const role = profile?.role || "funcionario";
+  const visibleNavItems = NAV_ITEMS.filter(item => item.roles.includes(role));
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
@@ -21,9 +26,10 @@ export default function AppLayout() {
       <aside className="hidden md:flex flex-col w-64 border-r bg-white min-h-screen sticky top-0">
         <div className="p-6 border-b flex items-center justify-between">
           <h1 className="text-xl font-bold text-slate-800">LavaJato PRO</h1>
+          <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-1 rounded-full uppercase">{role}</span>
         </div>
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {NAV_ITEMS.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname.startsWith(item.path);
             return (
@@ -44,14 +50,16 @@ export default function AppLayout() {
           })}
         </nav>
         <div className="p-4 border-t">
-          <Link
-            to="/app/settings"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100"
-          >
-            <Settings size={20} />
-            Configurações
-          </Link>
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 mt-1">
+          {role === "admin" && (
+            <Link
+              to="/app/settings"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100"
+            >
+              <Settings size={20} />
+              Configurações
+            </Link>
+          )}
+          <button onClick={signOut} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 mt-1">
             <LogOut size={20} />
             Sair
           </button>
@@ -67,7 +75,7 @@ export default function AppLayout() {
 
       {/* Bottom Nav (Mobile) */}
       <nav className="md:hidden fixed bottom-0 w-full bg-white border-t border-slate-200 flex justify-around items-center h-16 px-2 pb-safe z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
-        {NAV_ITEMS.filter((i) => i.mobile).map((item) => {
+        {visibleNavItems.filter((i) => i.mobile).map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname.startsWith(item.path);
           return (
