@@ -133,19 +133,19 @@ export default function Services() {
              ) : (
                 <div className="space-y-3">
                   {services.map(s => (
-                    <div key={s.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100/80 transition-colors">
+                    <div key={s.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100/80 transition-colors gap-4">
                       <div>
                         <p className="font-bold text-slate-800">{s.name}</p>
                         <p className="text-xs text-slate-500 font-medium">Duração: {s.time}</p>
                       </div>
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center justify-between md:justify-end gap-4">
                         <p className="font-bold text-slate-900">R$ {Number(s.price).toFixed(2).replace(".", ",")}</p>
                         <div className="flex gap-2">
-                          <button onClick={() => handleEdit(s)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                            <Edit2 size={16} />
+                          <button onClick={() => handleEdit(s)} className="p-3 md:p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-center min-w-[44px] min-h-[44px]">
+                            <Edit2 size={18} />
                           </button>
-                          <button onClick={() => handleDelete(s.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                            <Trash2 size={16} />
+                          <button onClick={() => handleDelete(s.id)} className="p-3 md:p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center justify-center min-w-[44px] min-h-[44px]">
+                            <Trash2 size={18} />
                           </button>
                         </div>
                       </div>
