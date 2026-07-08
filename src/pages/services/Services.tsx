@@ -54,8 +54,9 @@ export default function Services() {
       }
       setFormData({ id: "", name: "", price: "", time: "30 min" });
       fetchServices();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao salvar serviço:", err);
+      alert("Erro ao salvar: " + (err.message || "Verifique permissões RLS no Supabase"));
     } finally {
       setIsSubmitting(false);
     }
@@ -71,8 +72,9 @@ export default function Services() {
       const { error } = await supabase.from('services').delete().eq('id', id);
       if (error) throw error;
       fetchServices();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao excluir serviço:", err);
+      alert("Erro ao excluir: " + (err.message || "Verifique permissões RLS"));
     }
   };
 
