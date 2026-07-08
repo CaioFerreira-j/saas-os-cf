@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock, Play, CheckCircle2, Car, Banknote, Loader2 } from "lucide-react";
+import { Clock, Play, CheckCircle2, Car, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";

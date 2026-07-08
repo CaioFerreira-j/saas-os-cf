@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Download, FileText, Search, ArrowUpRight, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { supabase } from "@/services/supabase";
 
 interface ServiceData {
