@@ -14,6 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 const newOsSchema = z.object({
   plate: z.string().min(7, "Placa inválida").max(8),
   model: z.string().min(2, "Modelo é obrigatório"),
+  ownerName: z.string().min(2, "Nome do proprietário é obrigatório"),
+  ownerPhone: z.string().min(10, "Telefone inválido"),
   serviceId: z.string().min(1, "Selecione um serviço"),
 });
 
@@ -59,6 +61,8 @@ export default function NewOS() {
       const { error } = await supabase.from('os').insert({
         plate: data.plate,
         model: data.model,
+        owner_name: data.ownerName,
+        owner_phone: data.ownerPhone,
         service_id: data.serviceId,
         status: 'esperando',
         user_id: user?.id
@@ -78,6 +82,14 @@ export default function NewOS() {
     let val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
     if (val.length > 3) val = val.slice(0, 3) + "-" + val.slice(3, 7);
     setValue("plate", val, { shouldValidate: true });
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, "");
+    if (val.length > 11) val = val.slice(0, 11);
+    if (val.length > 2) val = `(${val.slice(0, 2)}) ${val.slice(2)}`;
+    if (val.length > 10) val = `${val.slice(0, 10)}-${val.slice(10)}`;
+    setValue("ownerPhone", val, { shouldValidate: true });
   };
 
   return (
@@ -133,6 +145,35 @@ export default function NewOS() {
                 {...register("model")}
               />
               {errors.model && <p className="text-red-500 text-xs font-medium">{errors.model.message}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ownerName" className="text-slate-700 font-medium">Nome do Proprietário</Label>
+              <Input
+                id="ownerName"
+                placeholder="Ex: João da Silva"
+                className={cn(
+                  "h-12 px-4 rounded-xl border-slate-200 bg-slate-50 focus-visible:ring-blue-500",
+                  errors.ownerName && "border-red-500 focus-visible:ring-red-500"
+                )}
+                {...register("ownerName")}
+              />
+              {errors.ownerName && <p className="text-red-500 text-xs font-medium">{errors.ownerName.message}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ownerPhone" className="text-slate-700 font-medium">Telefone (WhatsApp)</Label>
+              <Input
+                id="ownerPhone"
+                placeholder="(00) 00000-0000"
+                className={cn(
+                  "h-12 px-4 rounded-xl border-slate-200 bg-slate-50 focus-visible:ring-blue-500",
+                  errors.ownerPhone && "border-red-500 focus-visible:ring-red-500"
+                )}
+                {...register("ownerPhone")}
+                onChange={handlePhoneChange}
+              />
+              {errors.ownerPhone && <p className="text-red-500 text-xs font-medium">{errors.ownerPhone.message}</p>}
             </div>
           </div>
         </section>

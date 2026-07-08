@@ -7,8 +7,6 @@ const NAV_ITEMS = [
   { name: "Fila", path: "/app/os", icon: ListTodo, mobile: true, roles: ["admin", "funcionario"] },
   { name: "Nova OS", path: "/app/os/new", icon: PlusCircle, mobile: true, roles: ["admin", "funcionario"] },
   { name: "Dashboard", path: "/app/dashboard", icon: LayoutDashboard, mobile: false, roles: ["admin"] },
-  { name: "Veículos", path: "/app/vehicles", icon: Car, mobile: true, roles: ["admin", "funcionario"] },
-  { name: "Clientes", path: "/app/customers", icon: Users, mobile: false, roles: ["admin"] },
   { name: "Serviços", path: "/app/services", icon: Wrench, mobile: false, roles: ["admin"] },
   { name: "Financeiro", path: "/app/finance", icon: DollarSign, mobile: false, roles: ["admin"] },
 ];

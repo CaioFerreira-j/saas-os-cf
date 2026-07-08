@@ -134,11 +134,11 @@ function OSCard({ os, onUpdateStatus }: { os: OSData; onUpdateStatus: (id: strin
     lavado: {
       color: "bg-emerald-100 text-emerald-700 border-emerald-200",
       icon: <CheckCircle2 size={14} className="mr-1" />,
-      label: "Pronto",
-      actionText: "Cobrar",
-      nextStatus: "lavado" as OSStatus, // Placeholder para tela de cobrança futura
-      actionIcon: <Banknote size={16} className="mr-2" />,
-      actionColor: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20",
+      label: "Concluído",
+      actionText: "Concluído",
+      nextStatus: "lavado" as OSStatus,
+      actionIcon: <CheckCircle2 size={16} className="mr-2" />,
+      actionColor: "bg-emerald-100 text-emerald-700 cursor-default shadow-none pointer-events-none opacity-80",
     },
   };
 
@@ -184,8 +184,8 @@ function OSCard({ os, onUpdateStatus }: { os: OSData; onUpdateStatus: (id: strin
         <button
           onClick={() => {
             if (os.status !== 'lavado') onUpdateStatus(os.id, config.nextStatus);
-            else alert("Ação de cobrança em desenvolvimento");
           }}
+          disabled={os.status === 'lavado'}
           className={cn(
             "flex items-center justify-center h-11 px-5 rounded-xl font-semibold text-sm transition-all shadow-sm active:scale-95",
             config.actionColor
